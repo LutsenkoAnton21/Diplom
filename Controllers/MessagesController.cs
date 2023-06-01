@@ -78,160 +78,160 @@ namespace Diplom.Controllers
         //    //.ToListAsync();
 
         //}
+        //-------------------------------------------------------------------------------------------
+        //private readonly ILogger<MessagesController> _logger;
+        //private readonly WebSocketConnectionManager _connectionManager;
+        //private readonly IMessageService _messageService;
+        //private readonly ApplicationContext _context;
 
-        private readonly ILogger<MessagesController> _logger;
-        private readonly WebSocketConnectionManager _connectionManager;
-        private readonly IMessageService _messageService;
-        private readonly ApplicationContext _context;
-
-        public MessagesController(ILogger<MessagesController> logger, 
-            WebSocketConnectionManager connectionManager, 
-            IMessageService messageService,
-            ApplicationContext context)
-        {
-            _logger = logger;
-            _connectionManager = connectionManager;
-            _messageService = messageService;
-            _context = context;
-        }
-
-
-        [HttpGet]
-        public async Task<IActionResult> GetMessages()
-        {
-
-            var user = (User)HttpContext.Items["User"];
-
-            //Отримати список повідомлень для користувача за його ID
-            var messages = _context.Messages
-                .Where(m => m.RecipientEmail == user.Email)
-                .ToList();
-            //var email = GetAllMessages(user.Email);
-
-            return Ok(messages);
-        }
+        //public MessagesController(ILogger<MessagesController> logger, 
+        //    WebSocketConnectionManager connectionManager, 
+        //    IMessageService messageService,
+        //    ApplicationContext context)
+        //{
+        //    _logger = logger;
+        //    _connectionManager = connectionManager;
+        //    _messageService = messageService;
+        //    _context = context;
+        //}
 
 
-        [HttpPost()]
-        public async Task<IActionResult> SendMessage(/*string senderId, string receiverId, [FromBody] string content*/ CreateMessageModel model)
-        {
-            try
-            {
-                var user = (User)HttpContext.Items["User"];
-                Message message = new Message
-                {
-                    SenderId = user.Id,
-                    RecipientEmail = model.RecipientEmail,
-                    Text = model.Text,
-                    Date = model.Date,
+        //[HttpGet]
+        //public async Task<IActionResult> GetMessages()
+        //{
 
-                };
+        //    var user = (User)HttpContext.Items["User"];
 
-                // Відправити повідомлення до отримувача
-                await SendMessageToUser(message.SenderId, message.RecipientEmail, message.Text);
+        //    //Отримати список повідомлень для користувача за його ID
+        //    var messages = _context.Messages
+        //        .Where(m => m.RecipientEmail == user.Email)
+        //        .ToList();
+        //    //var email = GetAllMessages(user.Email);
 
-                // Зберегти повідомлення в базі даних
-                await _messageService.SaveMessage(message.SenderId, message.RecipientEmail, message.Text);
+        //    return Ok(messages);
+        //}
 
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message.");
-                return StatusCode(500, "Error sending message.");
-            }
-        }
 
-        private async Task SendMessageToUser(string senderId, string RecipientEmail, string text)
-        {
-            WebSockets.WebSocket connection = _connectionManager.GetConnection(RecipientEmail);
+        //[HttpPost()]
+        //public async Task<IActionResult> SendMessage(/*string senderId, string receiverId, [FromBody] string content*/ CreateMessageModel model)
+        //{
+        //    try
+        //    {
+        //        var user = (User)HttpContext.Items["User"];
+        //        Message message = new Message
+        //        {
+        //            SenderId = user.Id,
+        //            RecipientEmail = model.RecipientEmail,
+        //            Text = model.Text,
+        //            Date = model.Date,
 
-            if (connection != null && connection.State == WebSockets.WebSocketState.Open)
-            {
-                // Відправка повідомлення через WebSocket підключення
-                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(text));
-                await connection.SendAsync(buffer, WebSockets.WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-        }
+        //        };
 
-        [HttpGet("ws")]
-        public async Task<IActionResult> ConnectWebSocket()
-        {
+        //        // Відправити повідомлення до отримувача
+        //        await SendMessageToUser(message.SenderId, message.RecipientEmail, message.Text);
 
-            if (!HttpContext.WebSockets.IsWebSocketRequest)
-            {
-                return BadRequest();
-            }
+        //        // Зберегти повідомлення в базі даних
+        //        await _messageService.SaveMessage(message.SenderId, message.RecipientEmail, message.Text);
 
-            if (!HttpContext.WebSockets.IsWebSocketRequest)
-            {
-                return BadRequest();
-            }
+        //        return Ok();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error sending message.");
+        //        return StatusCode(500, "Error sending message.");
+        //    }
+        //}
 
-            var user = (User)HttpContext.Items["User"];
-            var userTest = "438426b2-3772-4c9a-bbc7-0310a0093042";
-            WebSockets.WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            _connectionManager.AddConnection(/*user.Id*/userTest, webSocket);
+        //private async Task SendMessageToUser(string senderId, string RecipientEmail, string text)
+        //{
+        //    WebSockets.WebSocket connection = _connectionManager.GetConnection(RecipientEmail);
 
-            await ReceiveMessages(/*user.Id*/userTest, webSocket);
+        //    if (connection != null && connection.State == WebSockets.WebSocketState.Open)
+        //    {
+        //        // Відправка повідомлення через WebSocket підключення
+        //        var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(text));
+        //        await connection.SendAsync(buffer, WebSockets.WebSocketMessageType.Text, true, CancellationToken.None);
+        //    }
+        //}
 
-            return new EmptyResult();
-        }
+        //[HttpGet("ws")]
+        //public async Task<IActionResult> ConnectWebSocket()
+        //{
 
-        private async Task ReceiveMessages(string userId, WebSockets.WebSocket webSocket)
-        {
-            var buffer = new byte[1024 * 4];
-            WebSockets.WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+        //    if (!HttpContext.WebSockets.IsWebSocketRequest)
+        //    {
+        //        return BadRequest();
+        //    }
 
-            while (!result.CloseStatus.HasValue)
-            {
-                string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+        //    if (!HttpContext.WebSockets.IsWebSocketRequest)
+        //    {
+        //        return BadRequest();
+        //    }
 
-                // Зберегти отримане повідомлення в базі даних
-                await _messageService.SaveMessage(userId, userId, message);
+        //    var user = (User)HttpContext.Items["User"];
+        //    var userTest = "438426b2-3772-4c9a-bbc7-0310a0093042";
+        //    WebSockets.WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+        //    _connectionManager.AddConnection(/*user.Id*/userTest, webSocket);
 
-                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            }
+        //    await ReceiveMessages(/*user.Id*/userTest, webSocket);
 
-            _connectionManager.RemoveConnection(userId);
-            await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
-        }
+        //    return new EmptyResult();
+        //}
 
-        [HttpGet("/ws")]
-        public async Task Get()
-        {
-            if (HttpContext.WebSockets.IsWebSocketRequest)
-            {
-                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-                _logger.Log(LogLevel.Information, "WebSocket connection established");
-                await Echo(webSocket);
-            }
-            else
-            {
-                HttpContext.Response.StatusCode = 400;
+        //private async Task ReceiveMessages(string userId, WebSockets.WebSocket webSocket)
+        //{
+        //    var buffer = new byte[1024 * 4];
+        //    WebSockets.WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
-            }
-        }
+        //    while (!result.CloseStatus.HasValue)
+        //    {
+        //        string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
 
-        private async Task Echo(WebSockets.WebSocket webSocket)
-        {
-            var buffer = new byte[1024 * 4];
-            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            _logger.Log(LogLevel.Information, "Message received from Client");
+        //        // Зберегти отримане повідомлення в базі даних
+        //        await _messageService.SaveMessage(userId, userId, message);
 
-            while (!result.CloseStatus.HasValue)
-            {
-                var serverMsg = Encoding.UTF8.GetBytes($"Server: Hello. You said: {Encoding.UTF8.GetString(buffer)}");
-                await webSocket.SendAsync(new ArraySegment<byte>(serverMsg, 0, serverMsg.Length), result.MessageType, result.EndOfMessage, CancellationToken.None);
-                _logger.Log(LogLevel.Information, "Message sent to Client");
+        //        result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+        //    }
 
-                buffer = new byte[1024 * 4];
-                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                _logger.Log(LogLevel.Information, "Message received from Client");
+        //    _connectionManager.RemoveConnection(userId);
+        //    await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
+        //}
 
-            }
-            await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
-            _logger.Log(LogLevel.Information, "WebSocket connection closed");
-        }
+        //[HttpGet("/ws")]
+        //public async Task Get()
+        //{
+        //    if (HttpContext.WebSockets.IsWebSocketRequest)
+        //    {
+        //        using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+        //        _logger.Log(LogLevel.Information, "WebSocket connection established");
+        //        await Echo(webSocket);
+        //    }
+        //    else
+        //    {
+        //        HttpContext.Response.StatusCode = 400;
+
+        //    }
+        //}
+
+        //private async Task Echo(WebSockets.WebSocket webSocket)
+        //{
+        //    var buffer = new byte[1024 * 4];
+        //    var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+        //    _logger.Log(LogLevel.Information, "Message received from Client");
+
+        //    while (!result.CloseStatus.HasValue)
+        //    {
+        //        var serverMsg = Encoding.UTF8.GetBytes($"Server: Hello. You said: {Encoding.UTF8.GetString(buffer)}");
+        //        await webSocket.SendAsync(new ArraySegment<byte>(serverMsg, 0, serverMsg.Length), result.MessageType, result.EndOfMessage, CancellationToken.None);
+        //        _logger.Log(LogLevel.Information, "Message sent to Client");
+
+        //        buffer = new byte[1024 * 4];
+        //        result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+        //        _logger.Log(LogLevel.Information, "Message received from Client");
+
+        //    }
+        //    await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
+        //    _logger.Log(LogLevel.Information, "WebSocket connection closed");
+        //}
     }
 }
