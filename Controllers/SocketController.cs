@@ -115,12 +115,12 @@ namespace Diplom.Controllers
             }
             _logger.Log(
                 LogLevel.Information,
-                $"Receiving messages for {ConnectedUser.Id}..."
+                $"Receiving messages for {ConnectedUser.Email}..."
             );
 
             var webSocket = await CreateConnection();
-            var messageReceiveResult = await ReceiveMessages(ConnectedUser.Id, webSocket);
-            await CloseConnection(ConnectedUser.Id, webSocket, messageReceiveResult);
+            var messageReceiveResult = await ReceiveMessages(ConnectedUser.Email, webSocket);
+            await CloseConnection(ConnectedUser.Email, webSocket, messageReceiveResult);
             
             // TODO: Check why connection is closed
 
@@ -153,10 +153,10 @@ namespace Diplom.Controllers
         private async Task<WebSockets.WebSocket> CreateConnection()
         {
             var webSocket = await ContextWebSockets.AcceptWebSocketAsync();
-            _connectionManager.AddConnection(ConnectedUser.Id, webSocket);
+            _connectionManager.AddConnection(ConnectedUser.Email, webSocket);
             _logger.Log(
                 LogLevel.Information, 
-                $"Connection for user {ConnectedUser.Id} is established"
+                $"Connection for user {ConnectedUser.Email} is established"
             );
 
             return webSocket;
@@ -166,7 +166,7 @@ namespace Diplom.Controllers
         {
             _logger.Log(
                 LogLevel.Information,
-                $"Receiving messages for {ConnectedUser.Id}..."
+                $"Receiving messages for {ConnectedUser.Email}..."
             );
 
             var messageBuffer = new byte[MessageBufferSize];
@@ -200,12 +200,12 @@ namespace Diplom.Controllers
         }
 
         private async Task CloseConnection(
-            string userId, 
+            string userEmail, 
             WebSockets.WebSocket webSocket, 
             WebSockets.WebSocketReceiveResult result
         )
         {
-            _connectionManager.RemoveConnection(userId);
+            _connectionManager.RemoveConnection(userEmail);
             await webSocket.CloseAsync(
                 result.CloseStatus.Value, 
                 result.CloseStatusDescription, 
@@ -214,7 +214,7 @@ namespace Diplom.Controllers
 
             _logger.Log(
                 LogLevel.Information,
-                $"Connection for {ConnectedUser.Id} is closed"
+                $"Connection for {ConnectedUser.Email} is closed"
             );
         }
     }
