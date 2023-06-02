@@ -13,7 +13,7 @@ using Diplom.Services;
 using Diplom.Auth;
 using Diplom.WebSocket;
 using Diplom.Models;
-using System.Security.Claims;
+using Newtonsoft.Json;
 
 namespace Diplom.Controllers
 {
@@ -73,7 +73,7 @@ namespace Diplom.Controllers
             {
                 var messageModel = new Message
                 {
-                    SenderId = ConnectedUser.Id,
+                    SenderEmail = ConnectedUser.Email,
                     RecipientEmail = model.RecipientEmail,
                     Text = model.Text,
                     Date = model.Date
@@ -81,17 +81,17 @@ namespace Diplom.Controllers
 
                 _logger.Log(
                     LogLevel.Information,
-                    $"Sending message to {messageModel.SenderId}..."
+                    $"Sending message to {messageModel.RecipientEmail}..."
                 );
 
                 await SendMessage(
-                    messageModel.SenderId,
+                    messageModel.SenderEmail,
                     messageModel.RecipientEmail,
                     messageModel.Text
                 );
 
                 await _messageService.SaveMessage(
-                    messageModel.SenderId,
+                    messageModel.SenderEmail,
                     messageModel.RecipientEmail,
                     messageModel.Text
                 );
@@ -100,7 +100,7 @@ namespace Diplom.Controllers
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Error sending message to {model.RecipientEmail} from {ConnectedUser.Id}";
+                var errorMessage = $"Error sending message to {model.RecipientEmail} from {ConnectedUser.Email}";
                 _logger.LogError(ex, errorMessage);
                 return StatusCode(500, errorMessage);
             }
@@ -118,7 +118,7 @@ namespace Diplom.Controllers
                 $"Receiving messages for {ConnectedUser.Email}..."
             );
 
-            var webSocket = await CreateConnection();
+            var webSocket = await CreateConnection(ConnectedUser.Email);
             var messageReceiveResult = await ReceiveMessages(ConnectedUser.Email, webSocket);
             await CloseConnection(ConnectedUser.Email, webSocket, messageReceiveResult);
             
@@ -127,46 +127,58 @@ namespace Diplom.Controllers
             return new StatusCodeResult((int)HttpStatusCode.Created);
         }
 
-        private async Task SendMessage(string senderId, string recipientEmail, string text)
+        private async Task SendMessage(string senderEmail, string recipientEmail, string text)
         {
             var webSocket = _connectionManager.GetConnection(recipientEmail);
 
             if (webSocket?.State == WebSockets.WebSocketState.Open)
             {
-                await SendMessage(text, webSocket);
+                await SendMessage(senderEmail, text, webSocket);
             }
         }
 
         private async Task SendMessage(
+            string senderEmail,
             string text,
             WebSockets.WebSocket webSocket
         )
         {
+            var content = new IncommingMessageModel
+            {
+                SenderEmail = senderEmail,
+                Message = text
+            };
+            var contentString = JsonConvert.SerializeObject(content);
+            
             await webSocket.SendAsync(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes(text)),
+                new ArraySegment<byte>(Encoding.UTF8.GetBytes(contentString)),
                 WebSockets.WebSocketMessageType.Text,
                 true,
                 CancellationToken.None
             );
         }
 
-        private async Task<WebSockets.WebSocket> CreateConnection()
+        private async Task<WebSockets.WebSocket> CreateConnection(string userEmail)
         {
             var webSocket = await ContextWebSockets.AcceptWebSocketAsync();
-            _connectionManager.AddConnection(ConnectedUser.Email, webSocket);
+            _connectionManager.AddConnection(userEmail, webSocket);
+
             _logger.Log(
                 LogLevel.Information, 
-                $"Connection for user {ConnectedUser.Email} is established"
+                $"Connection for user {userEmail} is established"
             );
 
             return webSocket;
         }
 
-        private async Task<WebSockets.WebSocketReceiveResult> ReceiveMessages(string userId, WebSockets.WebSocket webSocket)
+        private async Task<WebSockets.WebSocketReceiveResult> ReceiveMessages(
+            string receiverEmail, 
+            WebSockets.WebSocket webSocket
+        )
         {
             _logger.Log(
                 LogLevel.Information,
-                $"Receiving messages for {ConnectedUser.Email}..."
+                $"Receiving and saving messages for {receiverEmail}..."
             );
 
             var messageBuffer = new byte[MessageBufferSize];
@@ -175,7 +187,11 @@ namespace Diplom.Controllers
             while (!messageReceivedResult.CloseStatus.HasValue)
             {
                 var messageContent = GetMessageContent(messageBuffer, messageReceivedResult);
-                await _messageService.SaveMessage(userId, userId, messageContent);
+                await _messageService.SaveMessage(
+                    messageContent.SenderEmail, 
+                    receiverEmail, 
+                    messageContent.Message
+                );
 
                 messageReceivedResult = await ReceiveMessage(messageBuffer, webSocket);
             }
@@ -194,14 +210,18 @@ namespace Diplom.Controllers
             );
         }
 
-        private string GetMessageContent(byte[] buffer, WebSockets.WebSocketReceiveResult result)
+        private IncommingMessageModel GetMessageContent(
+            byte[] buffer, 
+            WebSockets.WebSocketReceiveResult result
+        )
         {
-            return Encoding.UTF8.GetString(buffer, 0, result.Count);
+            var contentString = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            return JsonConvert.DeserializeObject<IncommingMessageModel>(contentString);
         }
 
         private async Task CloseConnection(
             string userEmail, 
-            WebSockets.WebSocket webSocket, 
+            WebSockets.WebSocket webSocket,
             WebSockets.WebSocketReceiveResult result
         )
         {
@@ -214,7 +234,7 @@ namespace Diplom.Controllers
 
             _logger.Log(
                 LogLevel.Information,
-                $"Connection for {ConnectedUser.Email} is closed"
+                $"Connection for {userEmail} is closed"
             );
         }
     }

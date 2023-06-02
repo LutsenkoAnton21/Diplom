@@ -1,9 +1,5 @@
 ﻿using Diplom.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Diplom
 {
@@ -16,7 +12,14 @@ namespace Diplom
         public ApplicationContext(DbContextOptions<ApplicationContext> options)
             : base(options)
         {
-            Database.EnsureCreated();  
+            Database.EnsureCreated();
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<User>()
+                    .HasIndex(p => p.Email)
+                    .IsUnique();
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Diplom.Services
 {
     public interface IMessageService
     {
-        Task SaveMessage(string senderId, string receiverId, string content);
+        Task SaveMessage(string senderId, string receiverEmail, string content);
     }
 
 
@@ -45,12 +45,12 @@ namespace Diplom.Services
             _dbContext = dbContext;
         }
 
-        public async Task SaveMessage(string senderId, string receiverId, string content)
+        public async Task SaveMessage(string senderEmail, string receiverEmail, string content)
         {
             var message = new Message
             {
-                SenderId = senderId,
-                RecipientEmail = receiverId,
+                SenderEmail = senderEmail,
+                RecipientEmail = receiverEmail,
                 Text = content,
                 Date = DateTime.UtcNow
             };
